@@ -4,10 +4,10 @@ import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { Player } from './components/Player'
 import { Playlist } from './components/Playlist'
 import { LyricsDrawer } from './components/LyricsDrawer'
-import { getTracks } from './data/tracks'
+import { loadTracks } from './utils/loadTracks'
 import type { Track } from './types/track'
 
-const tracks: Track[] = getTracks()
+const tracks: Track[] = loadTracks()
 
 function App() {
   const [isLyricsOpen, setIsLyricsOpen] = useState(false)
