@@ -19,6 +19,17 @@ function findKey(map: Record<string, unknown>, slug: string): string | undefined
   return Object.keys(map).find(k => slugFromPath(k) === slug)
 }
 
+// Com eager: true, cada entrada é { default: urlString }
+function resolveUrl(mod: unknown): string {
+  if (typeof mod === 'string') return mod
+  return (mod as { default: string }).default
+}
+
+function resolveRaw(mod: unknown): string {
+  if (typeof mod === 'string') return mod
+  return (mod as { default: string }).default
+}
+
 export function loadTracks(): Track[] {
   const slugs = new Set(Object.keys(AUDIO).map(slugFromPath))
 
@@ -38,10 +49,10 @@ export function loadTracks(): Track[] {
       slug,
       title: slugToTitle(slug),
       artist: 'Espatifai',
-      src: AUDIO[audioKey] as string,
-      cover: coverKey ? (COVERS[coverKey] as string) : '',
-      lyrics: lyricsKey ? (LYRICS[lyricsKey] as string) : '',
-      translation: translationKey ? (TRANSLATIONS[translationKey] as string) : '',
+      src: resolveUrl(AUDIO[audioKey]),
+      cover: coverKey ? resolveUrl(COVERS[coverKey]) : '',
+      lyrics: lyricsKey ? resolveRaw(LYRICS[lyricsKey]) : '',
+      translation: translationKey ? resolveRaw(TRANSLATIONS[translationKey]) : '',
     })
   }
 
