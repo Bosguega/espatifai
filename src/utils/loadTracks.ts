@@ -17,14 +17,9 @@ function extractSlug(path: string): string {
   return parts[tracksIndex + 1]
 }
 
-function findTranslationForSlug(slug: string): string {
-  for (const [path, mod] of Object.entries(TRANSLATION_GLOB)) {
-    const fileSlug = extractSlug(path)
-    if (fileSlug === slug) {
-      return (mod as { default: string }).default
-    }
-  }
-  return ''
+function getModuleDefault<T>(module: unknown): T | undefined {
+  if (!module) return undefined
+  return (module as { default: T }).default
 }
 
 export function loadTracks(): Track[] {
@@ -38,25 +33,25 @@ export function loadTracks(): Track[] {
   const tracks: Track[] = []
 
   for (const slug of slugs) {
-    const audioPath = `../../assets/tracks/${slug}/audio.mp3`
-    const coverPath = `../../assets/tracks/${slug}/cover.jpg`
-    const lyricsPath = `../../assets/tracks/${slug}/lyrics.lrc`
-
-    const audioMod = AUDIO_GLOB[audioPath] as { default: string } | undefined
-    const coverMod = COVER_GLOB[coverPath] as { default: string } | undefined
-    const lyricsMod = LYRICS_GLOB[lyricsPath] as { default: string } | undefined
-
+    const audioMod = getModuleDefault<string>(AUDIO_GLOB[`../../assets/tracks/${slug}/audio.mp3`])
     if (!audioMod) continue
+
+    const cover = getModuleDefault<string>(COVER_GLOB[`../../assets/tracks/${slug}/cover.jpg`]) ?? ''
+    const lyrics = getModuleDefault<string>(LYRICS_GLOB[`../../assets/tracks/${slug}/lyrics.lrc`]) ?? ''
+
+    const translation = Object.entries(TRANSLATION_GLOB)
+      .find(([path]) => extractSlug(path) === slug)?.[1]
+    const translationContent = getModuleDefault<string>(translation) ?? ''
 
     tracks.push({
       id: id++,
       slug,
       title: slugToTitle(slug),
       artist: 'Espatifai',
-      src: audioMod.default,
-      cover: coverMod ? coverMod.default : '',
-      lyrics: lyricsMod ? lyricsMod.default : '',
-      translation: findTranslationForSlug(slug),
+      src: audioMod,
+      cover,
+      lyrics,
+      translation: translationContent,
     })
   }
 
