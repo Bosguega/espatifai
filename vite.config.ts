@@ -14,6 +14,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: isProd ? 'auto' : null,
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Espatifai - Music Player',
@@ -44,10 +45,13 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
+      workbox: isProd ? {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,jpg}'],
         globIgnores: ['**/*.mp3'],
         navigateFallback: undefined,
+      } : undefined,
+      devOptions: {
+        enabled: false,
       }
     })
   ],

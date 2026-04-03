@@ -1,4 +1,4 @@
-import { FileText } from 'lucide-react'
+import { FileText, Music } from 'lucide-react'
 import type { Track } from '../types/track'
 import { Controls } from './Controls'
 import { ProgressBar } from './ProgressBar'
@@ -40,11 +40,17 @@ export function Player({
     <div className="w-full flex flex-col gap-4 p-4">
       {/* Track Info */}
       <div className="flex items-center gap-4">
-        <img
-          src={currentTrack.cover}
-          alt={`Capa de ${currentTrack.title}`}
-          className="w-16 h-16 rounded-lg object-cover shadow-lg"
-        />
+        {currentTrack.cover ? (
+          <img
+            src={currentTrack.cover}
+            alt={`Capa de ${currentTrack.title}`}
+            className="w-16 h-16 rounded-lg object-cover shadow-lg"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-lg bg-neutral-800 flex items-center justify-center shadow-lg">
+            <Music size={24} className="text-neutral-500" />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-white truncate">{currentTrack.title}</h3>
           <p className="text-sm text-neutral-400 truncate">{currentTrack.artist}</p>
