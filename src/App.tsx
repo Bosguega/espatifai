@@ -1,0 +1,90 @@
+import { useState } from 'react'
+import { Music } from 'lucide-react'
+import { useAudioPlayer } from './hooks/useAudioPlayer'
+import { Player } from './components/Player'
+import { Playlist } from './components/Playlist'
+import { LyricsDrawer } from './components/LyricsDrawer'
+import { getTracks } from './data/tracks'
+import type { Track } from './types/track'
+
+const tracks: Track[] = getTracks()
+
+function App() {
+  const [isLyricsOpen, setIsLyricsOpen] = useState(false)
+
+  const {
+    currentTrack,
+    currentIndex,
+    isPlaying,
+    currentTime,
+    duration,
+    play,
+    pause,
+    playTrack,
+    nextTrack,
+    previousTrack,
+    seek,
+  } = useAudioPlayer(tracks)
+
+  const handleOpenLyrics = () => {
+    if (currentTrack) {
+      setIsLyricsOpen(true)
+    }
+  }
+
+  const handleCloseLyrics = () => {
+    setIsLyricsOpen(false)
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen bg-neutral-950">
+      {/* Header */}
+      <header className="flex items-center justify-center p-4 border-b border-neutral-800">
+        <Music size={24} className="text-green-400 mr-2" />
+        <h1 className="text-xl font-bold text-white">Espatifai</h1>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Playlist */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <Playlist
+            tracks={tracks}
+            currentIndex={currentIndex}
+            onSelectTrack={playTrack}
+          />
+        </div>
+
+        {/* Player (fixed at bottom) */}
+        <div className="border-t border-neutral-800 bg-neutral-900">
+          <Player
+            currentTrack={currentTrack}
+            isPlaying={isPlaying}
+            currentTime={currentTime}
+            duration={duration}
+            onPlay={play}
+            onPause={pause}
+            onNext={nextTrack}
+            onPrevious={previousTrack}
+            onSeek={seek}
+            onOpenLyrics={handleOpenLyrics}
+          />
+        </div>
+      </main>
+
+      {/* Lyrics Drawer */}
+      {currentTrack && (
+        <LyricsDrawer
+          isOpen={isLyricsOpen}
+          onClose={handleCloseLyrics}
+          lyrics={currentTrack.lyrics}
+          translation={currentTrack.translation}
+          title={currentTrack.title}
+          artist={currentTrack.artist}
+        />
+      )}
+    </div>
+  )
+}
+
+export default App
