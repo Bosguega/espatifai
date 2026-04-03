@@ -3,9 +3,12 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const isProd = process.env.NODE_ENV === 'production'
+const base = isProd ? '/espatifai/' : '/'
+
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/espatifai/',
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -20,21 +23,21 @@ export default defineConfig({
         background_color: '#0f0f0f',
         display: 'standalone',
         orientation: 'portrait',
-        scope: '/espatifai/',
-        start_url: '/espatifai/',
+        scope: base,
+        start_url: base,
         icons: [
           {
-            src: '/espatifai/pwa-192x192.png',
+            src: `${base}pwa-192x192.png`,
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: '/espatifai/pwa-512x512.png',
+            src: `${base}pwa-512x512.png`,
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: '/espatifai/pwa-512x512.png',
+            src: `${base}pwa-512x512.png`,
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
@@ -42,8 +45,6 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Cache apenas: shell do app (js, css, html, ícones, fontes)
-        // MP3 são servidos como streaming — NUNCA cacheados
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,jpg}'],
         globIgnores: ['**/*.mp3'],
         navigateFallback: undefined,

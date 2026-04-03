@@ -1,9 +1,9 @@
 import type { Track } from '../types/track'
 
-const AUDIO = import.meta.glob('../../assets/tracks/*/audio.mp3', { eager: true, as: 'url' })
-const COVERS = import.meta.glob('../../assets/tracks/*/cover.jpg', { eager: true, as: 'url' })
-const LYRICS = import.meta.glob('../../assets/tracks/*/lyrics.lrc', { eager: true, as: 'raw' })
-const TRANSLATIONS = import.meta.glob('../../assets/tracks/*/translation.*.lrc', { eager: true, as: 'raw' })
+const AUDIO = import.meta.glob('../assets/tracks/*/audio.mp3', { eager: true, as: 'url' })
+const COVERS = import.meta.glob('../assets/tracks/*/cover.jpg', { eager: true, as: 'url' })
+const LYRICS = import.meta.glob('../assets/tracks/*/lyrics.lrc', { eager: true, as: 'raw' })
+const TRANSLATIONS = import.meta.glob('../assets/tracks/*/translation.*.lrc', { eager: true, as: 'raw' })
 
 function slugToTitle(slug: string): string {
   return slug
