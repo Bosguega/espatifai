@@ -28,6 +28,7 @@ function App() {
     volume,
     shuffle,
     repeat,
+    error,
     play,
     pause,
     playTrack,
@@ -37,6 +38,7 @@ function App() {
     setVolume,
     toggleShuffle,
     toggleRepeat,
+    clearError,
   } = useAudioPlayer(tracks)
 
   const handleOpenLyrics = () => {
@@ -56,6 +58,16 @@ function App() {
         <Music size={22} className="text-green-400 mr-2" />
         <h1 className="text-base sm:text-xl font-bold text-white">{APP_NAME}</h1>
       </header>
+
+      {/* Error banner */}
+      {error && (
+        <div className="flex-none bg-red-900/80 border-b border-red-700 px-4 py-2 flex items-center justify-center gap-3">
+          <p className="text-sm text-red-200 flex-1 text-center">{error}</p>
+          <button onClick={clearError} className="text-red-300 hover:text-white text-sm font-medium" aria-label="Fechar erro">
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Middle: Playlist or Lyrics */}
       <div className="flex-1 overflow-hidden relative">

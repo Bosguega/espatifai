@@ -1,5 +1,5 @@
 import { FileText, Music, Volume2, VolumeX } from 'lucide-react'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import type { Track } from '../types/track'
 import type { RepeatMode } from '../hooks/useAudioPlayer'
 import { Controls } from './Controls'
@@ -24,7 +24,7 @@ interface PlayerProps {
   onOpenLyrics: () => void
 }
 
-export function Player({
+export const Player = memo(function Player({
   currentTrack,
   isPlaying,
   currentTime,
@@ -139,4 +139,4 @@ export function Player({
       />
     </div>
   )
-}
+})

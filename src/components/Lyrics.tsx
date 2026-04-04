@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { LyricsLine } from '../types/track'
 import { findActiveLine } from '../utils/parseLrc'
 import { ChevronLeft } from 'lucide-react'
@@ -20,7 +20,7 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-export function Lyrics({ lyrics, translation, currentTime, title, artist, onClose }: LyricsProps) {
+export const Lyrics = memo(function Lyrics({ lyrics, translation, currentTime, title, artist, onClose }: LyricsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('lyrics')
   const containerRef = useRef<HTMLDivElement>(null)
   const activeLineRef = useRef<HTMLDivElement>(null)
@@ -118,4 +118,4 @@ export function Lyrics({ lyrics, translation, currentTime, title, artist, onClos
       </div>
     </div>
   )
-}
+})

@@ -1,6 +1,7 @@
 import type { Track } from '../types/track'
 import { DEFAULT_ARTIST } from '../config/appKeys'
 import { parseLrc } from './parseLrc'
+import { slugToTitle } from './slugToTitle'
 
 interface ManifestTrack {
   slug: string
@@ -11,12 +12,6 @@ interface ManifestTrack {
 
 interface Manifest {
   tracks: ManifestTrack[]
-}
-
-function slugToTitle(slug: string): string {
-  return slug
-    .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 /**

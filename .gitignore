@@ -45,3 +45,6 @@ coverage
 .cache
 .temp
 .tmp
+
+# Generated (rebuild on each build)
+public/tracks/manifest.json
