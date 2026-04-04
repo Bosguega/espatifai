@@ -3,6 +3,12 @@ import type { Track } from '../types/track'
 
 export type RepeatMode = 'off' | 'all' | 'one'
 
+interface UseAudioPlayerOptions {
+  tracks: Track[]
+  activeIds: Set<number>
+  trackOrder: number[]
+}
+
 interface UseAudioPlayerReturn {
   currentTrack: Track | null
   currentIndex: number
@@ -62,7 +68,7 @@ function shuffleArray(arr: number[]): number[] {
   return a
 }
 
-export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
+export function useAudioPlayer({ tracks, activeIds, trackOrder }: UseAudioPlayerOptions): UseAudioPlayerReturn {
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
@@ -77,28 +83,92 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
 
   // Refs para evitar stale closures
   const currentIndexRef = useRef(currentIndex)
-  const tracksRef = useRef(tracks)
+  const activeIdsRef = useRef(activeIds)
+  const trackOrderRef = useRef(trackOrder)
   const shuffleRef = useRef(shuffle)
   const repeatRef = useRef(repeat)
   const playTrackRef = useRef<((index: number) => void) | null>(null)
   const handleEndedRef = useRef<(() => void) | null>(null)
-  const orderedIndicesRef = useRef<number[]>([])
+  const shuffledOrderRef = useRef<number[]>([]) // track IDs
   const positionInOrderRef = useRef(-1)
 
   currentIndexRef.current = currentIndex
-  tracksRef.current = tracks
+  activeIdsRef.current = activeIds
+  trackOrderRef.current = trackOrder
   shuffleRef.current = shuffle
   repeatRef.current = repeat
 
+  // Build shuffled order of active track IDs
   const buildShuffledOrder = useCallback(() => {
-    const len = tracksRef.current.length
-    const indices = Array.from({ length: len }, (_, i) => i)
-    orderedIndicesRef.current = shuffleArray(indices)
+    const order = trackOrderRef.current
+    const active = activeIdsRef.current
+    const activeOrder = order.filter(id => active.has(id))
+    shuffledOrderRef.current = shuffleArray(activeOrder)
   }, [])
 
   useEffect(() => {
     if (shuffle) buildShuffledOrder()
-  }, [shuffle, tracks.length, buildShuffledOrder])
+  }, [shuffle, buildShuffledOrder])
+
+  // Find next track ID in sequence (skipping unselected)
+  const findNextId = useCallback((currentId: number): number | null => {
+    const order = trackOrderRef.current
+    const active = activeIdsRef.current
+    const rep = repeatRef.current
+    const shuf = shuffleRef.current
+
+    // Repeat one — stay on current
+    if (rep === 'one') return active.has(currentId) ? currentId : null
+
+    // Shuffle mode
+    if (shuf) {
+      const shufOrder = shuffledOrderRef.current
+      if (shufOrder.length === 0) return null
+      const pos = positionInOrderRef.current
+      const nextPos = pos + 1
+      if (nextPos >= shufOrder.length) {
+        if (rep === 'all') {
+          shuffledOrderRef.current = shuffleArray(shufOrder)
+          positionInOrderRef.current = 0
+          return shuffledOrderRef.current[0]
+        }
+        positionInOrderRef.current = 0
+        return shufOrder[0]
+      }
+      positionInOrderRef.current = nextPos
+      return shufOrder[nextPos]
+    }
+
+    // Normal sequential via trackOrder
+    const idx = order.indexOf(currentId)
+    const next = idx + 1
+    if (next >= order.length) {
+      // End of playlist — loop to first active
+      return rep === 'all' ? order.find(id => active.has(id)) ?? null : order.find(id => active.has(id)) ?? null
+    }
+    return order[next]
+  }, [])
+
+  // Convert track ID to original array index
+  const idToIndex = useCallback((id: number): number => {
+    return tracks.findIndex(t => t.id === id)
+  }, [tracks])
+
+  // Internal ended handler
+  useEffect(() => {
+    handleEndedRef.current = () => {
+      const currentId = currentIndexRef.current >= 0 ? tracksRef.current[currentIndexRef.current]?.id : -1
+      if (currentId < 0) return
+      const nextId = findNextId(currentId)
+      if (nextId == null) return
+      const nextIdx = idToIndex(nextId)
+      if (nextIdx >= 0) playTrackRef.current?.(nextIdx)
+    }
+  }, [findNextId, idToIndex])
+
+  // Ref for tracks lookup inside callbacks
+  const tracksRef = useRef(tracks)
+  tracksRef.current = tracks
 
   // Audio element no DOM (hidden)
   useEffect(() => {
@@ -165,72 +235,17 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
         : [],
     })
 
-    navigator.mediaSession.setActionHandler('play', () => playTrackRef.current?.(currentIndexRef.current))
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (currentIndexRef.current >= 0) playTrackRef.current?.(currentIndexRef.current)
+    })
     navigator.mediaSession.setActionHandler('pause', () => audioRef.current?.pause())
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
-      // Logica simplificada: volta uma faixa
-      const idx = currentIndexRef.current
-      const len = tracksRef.current.length
-      if (len === 0) return
-      playTrackRef.current?.(idx > 0 ? idx - 1 : len - 1)
-    })
-    navigator.mediaSession.setActionHandler('nexttrack', () => {
-      const idx = currentIndexRef.current
-      const len = tracksRef.current.length
-      if (len === 0) return
-      playTrackRef.current?.((idx + 1) % len)
-    })
   }, [currentTrack])
 
-  // Atualizar media session com estado de playback
   useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused'
     }
   }, [isPlaying])
-
-  // Resolve proxima faixa
-  const getNextIndex = useCallback((currentIdx: number): number => {
-    const len = tracksRef.current.length
-    if (len === 0) return -1
-
-    const rep = repeatRef.current
-    const shuf = shuffleRef.current
-
-    if (rep === 'one') return currentIdx
-
-    if (shuf) {
-      const order = orderedIndicesRef.current
-      const pos = positionInOrderRef.current
-      if (order.length === 0) return (currentIdx + 1) % len
-
-      const nextPos = pos + 1
-      if (nextPos >= order.length) {
-        if (rep === 'all') {
-          orderedIndicesRef.current = shuffleArray(order)
-          positionInOrderRef.current = 0
-          return orderedIndicesRef.current[0]
-        }
-        positionInOrderRef.current = 0
-        return order[0]
-      }
-      positionInOrderRef.current = nextPos
-      return order[nextPos]
-    }
-
-    const next = currentIdx + 1
-    if (next >= len) return rep === 'all' ? 0 : 0
-    return next
-  }, [])
-
-  // Internal ended handler via ref (no more `as any` hacks)
-  useEffect(() => {
-    handleEndedRef.current = () => {
-      const idx = currentIndexRef.current
-      const next = getNextIndex(idx)
-      playTrackRef.current?.(next)
-    }
-  }, [getNextIndex])
 
   const playTrack = useCallback((index: number) => {
     const audio = audioRef.current
@@ -243,9 +258,10 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
     setCurrentTime(0)
     setDuration(0)
 
+    // Update shuffled position
     if (shuffleRef.current) {
-      const order = orderedIndicesRef.current
-      const pos = order.indexOf(index)
+      const shufOrder = shuffledOrderRef.current
+      const pos = shufOrder.indexOf(track.id)
       positionInOrderRef.current = pos >= 0 ? pos : -1
     }
 
@@ -258,7 +274,6 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
     setIsPlaying(true)
   }, [tracks])
 
-  // Expose via ref
   useEffect(() => {
     playTrackRef.current = playTrack
   }, [playTrack])
@@ -277,10 +292,13 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
   }, [])
 
   const nextTrack = useCallback(() => {
-    const idx = currentIndexRef.current
-    const next = getNextIndex(idx)
-    playTrack(next)
-  }, [getNextIndex, playTrack])
+    const currentId = currentIndexRef.current >= 0 ? tracksRef.current[currentIndexRef.current]?.id : -1
+    if (currentId < 0) return
+    const nextId = findNextId(currentId)
+    if (nextId == null) return
+    const nextIdx = idToIndex(nextId)
+    if (nextIdx >= 0) playTrack(nextIdx)
+  }, [findNextId, idToIndex, playTrack])
 
   const previousTrack = useCallback(() => {
     const audio = audioRef.current
@@ -290,24 +308,30 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
       audio.currentTime = 0
       setCurrentTime(0)
     } else {
-      const len = tracksRef.current.length
-      if (len === 0) return
-      const idx = currentIndexRef.current
+      const order = trackOrderRef.current
+      const currentId = currentIndexRef.current >= 0 ? tracksRef.current[currentIndexRef.current]?.id : -1
+      if (currentId < 0) return
 
+      const idx = order.indexOf(currentId)
       if (shuffleRef.current) {
-        const order = orderedIndicesRef.current
+        const shufOrder = shuffledOrderRef.current
         const pos = positionInOrderRef.current
         if (pos > 0) {
           positionInOrderRef.current = pos - 1
-          playTrack(order[pos - 1])
-        } else {
-          playTrack(order[order.length - 1])
+          const prevId = shufOrder[pos - 1]
+          playTrack(idToIndex(prevId))
+        } else if (shufOrder.length > 0) {
+          positionInOrderRef.current = shufOrder.length - 1
+          playTrack(idToIndex(shufOrder[shufOrder.length - 1]))
         }
       } else {
-        playTrack(idx > 0 ? idx - 1 : len - 1)
+        // Find previous active track in order
+        const prevIdx = idx > 0 ? idx - 1 : order.length - 1
+        const prevId = order[prevIdx]
+        playTrack(idToIndex(prevId))
       }
     }
-  }, [playTrack])
+  }, [playTrack, idToIndex])
 
   const seek = useCallback((time: number) => {
     const audio = audioRef.current

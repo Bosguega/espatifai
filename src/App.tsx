@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Music, ChevronLeft, Type } from 'lucide-react'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { Player } from './components/Player'
@@ -24,9 +24,43 @@ function App() {
   })
   const [showFontSizeSlider, setShowFontSizeSlider] = useState(false)
 
+  // Track order (IDs)
+  const [trackOrder, setTrackOrder] = useState<number[]>([])
+  // Selected track IDs
+  const [selectedTracks, setSelectedTracks] = useState<Set<number>>(new Set())
+
   useEffect(() => {
-    loadTracks(TRACKS_PATH).then(setTracks)
+    loadTracks(TRACKS_PATH).then(loaded => {
+      setTracks(loaded)
+      setTrackOrder(loaded.map(t => t.id))
+      setSelectedTracks(new Set(loaded.map(t => t.id)))
+    })
   }, [])
+
+  // Load persisted order and selection
+  useEffect(() => {
+    if (tracks.length === 0) return
+    try {
+      const savedOrder = localStorage.getItem('espatifai-track-order')
+      if (savedOrder) {
+        const order = JSON.parse(savedOrder) as number[]
+        const validIds = new Set(tracks.map(t => t.id))
+        const filtered = order.filter(id => validIds.has(id))
+        // Add any new tracks not in saved order
+        const missing = tracks.filter(t => !filtered.includes(t.id)).map(t => t.id)
+        setTrackOrder([...filtered, ...missing])
+      }
+
+      const savedSelected = localStorage.getItem('espatifai-selected')
+      if (savedSelected) {
+        const ids = JSON.parse(savedSelected) as number[]
+        const validIds = new Set(tracks.map(t => t.id))
+        setSelectedTracks(new Set(ids.filter(id => validIds.has(id))))
+      }
+    } catch {
+      // ignorar
+    }
+  }, [tracks])
 
   const {
     currentTrack,
@@ -48,7 +82,7 @@ function App() {
     toggleShuffle,
     toggleRepeat,
     clearError,
-  } = useAudioPlayer(tracks)
+  } = useAudioPlayer({ tracks, activeIds: selectedTracks, trackOrder })
 
   // Salva tamanho da fonte
   useEffect(() => {
@@ -68,6 +102,30 @@ function App() {
   const handleCloseLyrics = () => {
     setIsLyricsOpen(false)
   }
+
+  const handleToggleTrack = useCallback((id: number) => {
+    setSelectedTracks(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        // Don't allow deselecting the last track
+        if (next.size <= 1) return prev
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      try {
+        localStorage.setItem('espatifai-selected', JSON.stringify([...next]))
+      } catch { /* ignorar */ }
+      return next
+    })
+  }, [])
+
+  const handleReorder = useCallback((order: number[]) => {
+    setTrackOrder(order)
+    try {
+      localStorage.setItem('espatifai-track-order', JSON.stringify(order))
+    } catch { /* ignorar */ }
+  }, [])
 
   return (
     <div className="flex flex-col h-[100dvh] bg-neutral-950 overflow-hidden">
@@ -144,8 +202,12 @@ function App() {
             <div className={`absolute inset-0 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 transition-opacity duration-300 ${isLyricsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
               <Playlist
                 tracks={tracks}
+                trackOrder={trackOrder}
+                selectedTracks={selectedTracks}
                 currentIndex={currentIndex}
                 onSelectTrack={playTrack}
+                onToggleTrack={handleToggleTrack}
+                onReorder={handleReorder}
               />
             </div>
 
