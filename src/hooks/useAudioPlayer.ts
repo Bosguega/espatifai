@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Track } from '../types/track'
 
+export type RepeatMode = 'off' | 'all' | 'one'
+
 interface UseAudioPlayerReturn {
   currentTrack: Track | null
   currentIndex: number
@@ -8,6 +10,8 @@ interface UseAudioPlayerReturn {
   currentTime: number
   duration: number
   volume: number
+  shuffle: boolean
+  repeat: RepeatMode
   error: string | null
   play: () => void
   pause: () => void
@@ -16,6 +20,8 @@ interface UseAudioPlayerReturn {
   previousTrack: () => void
   seek: (time: number) => void
   setVolume: (v: number) => void
+  toggleShuffle: () => void
+  toggleRepeat: () => void
   clearError: () => void
 }
 
@@ -25,6 +31,8 @@ interface PlayerState {
   slug: string
   time: number
   volume: number
+  shuffle: boolean
+  repeat: RepeatMode
 }
 
 function loadState(): PlayerState | null {
@@ -36,16 +44,25 @@ function loadState(): PlayerState | null {
   }
 }
 
-function saveState(slug: string, time: number, volume: number) {
+function saveState(slug: string, time: number, volume: number, shuffle: boolean, repeat: RepeatMode) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ slug, time, volume }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ slug, time, volume, shuffle, repeat }))
   } catch {
     // localStorage pode estar desabilitado
   }
 }
 
+/** Fisher-Yates shuffle */
+function shuffleArray(arr: number[]): number[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+      ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
-  // Audio element sempre no DOM para compatibilidade com iOS Safari
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
@@ -53,19 +70,39 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [volume, setVolumeState] = useState(() => {
-    const saved = loadState()
-    return saved?.volume ?? 1
-  })
+  const [volume, setVolumeState] = useState(() => loadState()?.volume ?? 1)
+  const [shuffle, setShuffle] = useState(() => loadState()?.shuffle ?? false)
+  const [repeat, setRepeat] = useState<RepeatMode>(() => loadState()?.repeat ?? 'off')
   const [error, setError] = useState<string | null>(null)
 
-  // Refs para evitar stale closures nos event listeners
+  // Refs para evitar stale closures
   const currentIndexRef = useRef(currentIndex)
   const tracksRef = useRef(tracks)
+  const shuffleRef = useRef(shuffle)
+  const repeatRef = useRef(repeat)
+  const orderedIndicesRef = useRef<number[]>([]) // shuffled order
+  const positionInOrderRef = useRef(-1) // position within shuffled order
+
   currentIndexRef.current = currentIndex
   tracksRef.current = tracks
+  shuffleRef.current = shuffle
+  repeatRef.current = repeat
 
-  // Inicializa o audio element e coloca no DOM (hidden)
+  // Build/rebuild shuffled order when tracks or shuffle changes
+  const buildShuffledOrder = useCallback(() => {
+    const len = tracksRef.current.length
+    const indices = Array.from({ length: len }, (_, i) => i)
+    const shuffled = shuffleArray(indices)
+    orderedIndicesRef.current = shuffled
+  }, [])
+
+  useEffect(() => {
+    if (shuffle) {
+      buildShuffledOrder()
+    }
+  }, [shuffle, tracks.length, buildShuffledOrder])
+
+  // Audio element no DOM (hidden)
   useEffect(() => {
     if (!audioRef.current) {
       const audio = document.createElement('audio')
@@ -76,8 +113,6 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
     }
 
     const audio = audioRef.current
-
-    // Restaura estado salvo
     const saved = loadState()
     if (saved) {
       audio.volume = saved.volume
@@ -88,25 +123,18 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
     const handleError = () => {
       const code = audio.error?.code
       const messages: Record<number, string> = {
-        1: 'Reprodução cancelada pelo usuário',
-        2: 'Erro de rede ao carregar o áudio',
-        3: 'Falha ao decodificar o arquivo de áudio',
-        4: 'Formato de áudio não suportado',
+        1: 'Reproducao cancelada pelo usuario',
+        2: 'Erro de rede ao carregar o audio',
+        3: 'Falha ao decodificar o arquivo de audio',
+        4: 'Formato de audio nao suportado',
       }
-      setError(messages[code ?? 0] ?? 'Erro desconhecido ao carregar o áudio')
+      setError(messages[code ?? 0] ?? 'Erro desconhecido ao carregar o audio')
       setIsPlaying(false)
     }
     const handleEnded = () => {
       setIsPlaying(false)
       setCurrentTime(0)
-      const idx = currentIndexRef.current
-      const len = tracksRef.current.length
-      // Auto-play próxima faixa (loop)
-      if (len > 0) {
-        const next = (idx + 1) % len
-          // Importar playTrack via ref para evitar stale closure
-          ; (audioRef.current as any)._playTrack?.(next)
-      }
+        ; (audioRef.current as any)._handleEnded?.()
     }
 
     audio.addEventListener('timeupdate', handleTimeUpdate)
@@ -119,16 +147,59 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
       audio.removeEventListener('error', handleError)
       audio.removeEventListener('ended', handleEnded)
-      // Nao removemos o audio do DOM para evitar leaks em re-renders
     }
   }, [])
 
-  // Salva estado periodicamente
+  // Salva estado
   useEffect(() => {
     if (currentTrack) {
-      saveState(currentTrack.slug, currentTime, volume)
+      saveState(currentTrack.slug, currentTime, volume, shuffle, repeat)
     }
-  }, [currentTrack, currentTime, volume])
+  }, [currentTrack, currentTime, volume, shuffle, repeat])
+
+  // Resolve which track to play next
+  const getNextIndex = useCallback((currentIdx: number): number => {
+    const len = tracksRef.current.length
+    if (len === 0) return -1
+
+    const rep = repeatRef.current
+    const shuf = shuffleRef.current
+
+    // Repeat one
+    if (rep === 'one') return currentIdx
+
+    // Shuffle mode
+    if (shuf) {
+      const order = orderedIndicesRef.current
+      const pos = positionInOrderRef.current
+      if (order.length === 0) return (currentIdx + 1) % len
+
+      const nextPos = pos + 1
+      if (nextPos >= order.length) {
+        // End of shuffled list
+        if (rep === 'all') {
+          // Re-shuffle and start from beginning
+          const newOrder = shuffleArray(order)
+          orderedIndicesRef.current = newOrder
+          positionInOrderRef.current = 0
+          return newOrder[0]
+        }
+        // Repeat off → stop at end (loop to first)
+        positionInOrderRef.current = 0
+        return order[0]
+      }
+      positionInOrderRef.current = nextPos
+      return order[nextPos]
+    }
+
+    // Normal sequential
+    const next = currentIdx + 1
+    if (next >= len) {
+      if (rep === 'all') return 0
+      return 0 // fallback loop even when repeat off (standard player behavior)
+    }
+    return next
+  }, [])
 
   const playTrack = useCallback((index: number) => {
     const audio = audioRef.current
@@ -141,26 +212,39 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
     setCurrentTime(0)
     setDuration(0)
 
+    // Update shuffled position if needed
+    if (shuffleRef.current) {
+      const order = orderedIndicesRef.current
+      const pos = order.indexOf(index)
+      positionInOrderRef.current = pos >= 0 ? pos : -1
+    }
+
     audio.src = track.src
     audio.load()
     audio.play().catch(() => {
-      setError('Nao foi possivel reproduzir o áudio')
+      setError('Nao foi possivel reproduzir o audio')
       setIsPlaying(false)
     })
     setIsPlaying(true)
   }, [tracks])
 
-  // Expose playTrack no audio element para o handleEnded acessar
+  const handleEnded = useCallback(() => {
+    const idx = currentIndexRef.current
+    const next = getNextIndex(idx)
+      ; (audioRef.current as any)._playTrack?.(next)
+  }, [getNextIndex])
+
   useEffect(() => {
     if (audioRef.current) {
       ; (audioRef.current as any)._playTrack = playTrack
+        ; (audioRef.current as any)._handleEnded = handleEnded
     }
-  }, [playTrack])
+  }, [playTrack, handleEnded])
 
   const play = useCallback(() => {
     const audio = audioRef.current
     if (audio && currentTrack) {
-      audio.play().catch(() => setError('Nao foi possivel reproduzir o áudio'))
+      audio.play().catch(() => setError('Nao foi possivel reproduzir o audio'))
       setIsPlaying(true)
     }
   }, [currentTrack])
@@ -172,10 +256,9 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
 
   const nextTrack = useCallback(() => {
     const idx = currentIndexRef.current
-    const len = tracksRef.current.length
-    if (len === 0) return
-    playTrack((idx + 1) % len)
-  }, [playTrack])
+    const next = getNextIndex(idx)
+    playTrack(next)
+  }, [getNextIndex, playTrack])
 
   const previousTrack = useCallback(() => {
     const audio = audioRef.current
@@ -185,10 +268,23 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
       audio.currentTime = 0
       setCurrentTime(0)
     } else {
-      const idx = currentIndexRef.current
       const len = tracksRef.current.length
       if (len === 0) return
-      playTrack(idx > 0 ? idx - 1 : len - 1)
+      const idx = currentIndexRef.current
+
+      // In shuffle mode, go to previous in shuffled order
+      if (shuffleRef.current) {
+        const order = orderedIndicesRef.current
+        const pos = positionInOrderRef.current
+        if (pos > 0) {
+          positionInOrderRef.current = pos - 1
+          playTrack(order[pos - 1])
+        } else {
+          playTrack(order[order.length - 1])
+        }
+      } else {
+        playTrack(idx > 0 ? idx - 1 : len - 1)
+      }
     }
   }, [playTrack])
 
@@ -208,6 +304,22 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
     setVolumeState(clamped)
   }, [])
 
+  const toggleShuffle = useCallback(() => {
+    setShuffle(prev => {
+      const next = !prev
+      if (next) buildShuffledOrder()
+      return next
+    })
+  }, [buildShuffledOrder])
+
+  const toggleRepeat = useCallback(() => {
+    setRepeat(prev => {
+      const cycle: RepeatMode[] = ['off', 'all', 'one']
+      const idx = cycle.indexOf(prev)
+      return cycle[(idx + 1) % cycle.length]
+    })
+  }, [])
+
   const clearError = useCallback(() => setError(null), [])
 
   return {
@@ -217,6 +329,8 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
     currentTime,
     duration,
     volume,
+    shuffle,
+    repeat,
     error,
     play,
     pause,
@@ -225,6 +339,8 @@ export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
     previousTrack,
     seek,
     setVolume,
+    toggleShuffle,
+    toggleRepeat,
     clearError,
   }
 }

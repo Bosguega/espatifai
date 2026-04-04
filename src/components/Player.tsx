@@ -1,6 +1,7 @@
 import { FileText, Music, Volume2, VolumeX } from 'lucide-react'
 import { useState } from 'react'
 import type { Track } from '../types/track'
+import type { RepeatMode } from '../hooks/useAudioPlayer'
 import { Controls } from './Controls'
 import { ProgressBar } from './ProgressBar'
 
@@ -10,12 +11,16 @@ interface PlayerProps {
   currentTime: number
   duration: number
   volume: number
+  shuffle: boolean
+  repeat: RepeatMode
   onPlay: () => void
   onPause: () => void
   onNext: () => void
   onPrevious: () => void
   onSeek: (time: number) => void
   onVolumeChange: (v: number) => void
+  onToggleShuffle: () => void
+  onToggleRepeat: () => void
   onOpenLyrics: () => void
 }
 
@@ -25,12 +30,16 @@ export function Player({
   currentTime,
   duration,
   volume,
+  shuffle,
+  repeat,
   onPlay,
   onPause,
   onNext,
   onPrevious,
   onSeek,
   onVolumeChange,
+  onToggleShuffle,
+  onToggleRepeat,
   onOpenLyrics,
 }: PlayerProps) {
   const [showVolume, setShowVolume] = useState(false)
@@ -119,10 +128,14 @@ export function Player({
       {/* Controls */}
       <Controls
         isPlaying={isPlaying}
+        shuffle={shuffle}
+        repeat={repeat}
         onPlay={onPlay}
         onPause={onPause}
         onNext={onNext}
         onPrevious={onPrevious}
+        onToggleShuffle={onToggleShuffle}
+        onToggleRepeat={onToggleRepeat}
       />
     </div>
   )
