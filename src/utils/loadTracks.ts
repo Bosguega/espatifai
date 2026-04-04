@@ -1,10 +1,11 @@
 import type { Track } from '../types/track'
 import { DEFAULT_ARTIST } from '../config/appKeys'
+import { parseLrc } from './parseLrc'
 
-const AUDIO = import.meta.glob('../assets/tracks/*/audio.mp3', { eager: true, as: 'url' })
-const COVERS = import.meta.glob('../assets/tracks/*/cover.jpg', { eager: true, as: 'url' })
-const LYRICS = import.meta.glob('../assets/tracks/*/lyrics.lrc', { eager: true, as: 'raw' })
-const TRANSLATIONS = import.meta.glob('../assets/tracks/*/translation.*.lrc', { eager: true, as: 'raw' })
+const AUDIO = import.meta.glob('../assets/tracks/*/audio.mp3', { eager: true, query: '?url' })
+const COVERS = import.meta.glob('../assets/tracks/*/cover.jpg', { eager: true, query: '?url' })
+const LYRICS = import.meta.glob('../assets/tracks/*/lyrics.lrc', { eager: true, query: '?raw' })
+const TRANSLATIONS = import.meta.glob('../assets/tracks/*/translation.*.lrc', { eager: true, query: '?raw' })
 
 function slugToTitle(slug: string): string {
   return slug
@@ -20,7 +21,6 @@ function findKey(map: Record<string, unknown>, slug: string): string | undefined
   return Object.keys(map).find(k => slugFromPath(k) === slug)
 }
 
-// Com eager: true, cada entrada é { default: urlString }
 function resolveUrl(mod: unknown): string {
   if (typeof mod === 'string') return mod
   return (mod as { default: string }).default
@@ -45,6 +45,9 @@ export function loadTracks(): Track[] {
     const lyricsKey = findKey(LYRICS, slug)
     const translationKey = findKey(TRANSLATIONS, slug)
 
+    const lyricsRaw = lyricsKey ? resolveRaw(LYRICS[lyricsKey]) : ''
+    const translationRaw = translationKey ? resolveRaw(TRANSLATIONS[translationKey]) : ''
+
     tracks.push({
       id: id++,
       slug,
@@ -52,8 +55,10 @@ export function loadTracks(): Track[] {
       artist: DEFAULT_ARTIST,
       src: resolveUrl(AUDIO[audioKey]),
       cover: coverKey ? resolveUrl(COVERS[coverKey]) : '',
-      lyrics: lyricsKey ? resolveRaw(LYRICS[lyricsKey]) : '',
-      translation: translationKey ? resolveRaw(TRANSLATIONS[translationKey]) : '',
+      lyrics: lyricsRaw,
+      translation: translationRaw,
+      parsedLyrics: parseLrc(lyricsRaw),
+      parsedTranslation: parseLrc(translationRaw),
     })
   }
 

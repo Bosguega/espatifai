@@ -75,8 +75,9 @@ function App() {
         <LyricsDrawer
           isOpen={isLyricsOpen}
           onClose={handleCloseLyrics}
-          lyrics={currentTrack.lyrics}
-          translation={currentTrack.translation}
+          lyrics={currentTrack.parsedLyrics}
+          translation={currentTrack.parsedTranslation}
+          currentTime={currentTime}
           title={currentTrack.title}
           artist={currentTrack.artist}
         />
