@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { LyricsLine } from '../types/track'
 import { findActiveLine } from '../utils/parseLrc'
 import { ChevronLeft } from 'lucide-react'
+import { useWakeLock } from '../hooks/useWakeLock'
 
 interface LyricsProps {
   lyrics: LyricsLine[]
@@ -24,6 +25,9 @@ export const Lyrics = memo(function Lyrics({ lyrics, translation, currentTime, t
   const [activeTab, setActiveTab] = useState<TabType>('lyrics')
   const containerRef = useRef<HTMLDivElement>(null)
   const activeLineRef = useRef<HTMLDivElement>(null)
+
+  // Impede protecao de tela enquanto lyrics estiver aberto
+  useWakeLock()
 
   const hasTranslation = translation.length > 0
 
