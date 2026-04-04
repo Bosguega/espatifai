@@ -38,17 +38,17 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-neutral-950">
+    <div className="flex flex-col h-[100dvh] bg-neutral-950 overflow-hidden">
       {/* Header (fixed top) */}
-      <header className="flex-none flex items-center justify-center p-4 border-b border-neutral-800 bg-neutral-950 z-20">
-        <Music size={24} className="text-green-400 mr-2" />
-        <h1 className="text-xl font-bold text-white">{APP_NAME}</h1>
+      <header className="flex-none flex items-center justify-center px-4 pt-3 pb-3 sm:py-3 border-b border-neutral-800 bg-neutral-950 z-20" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <Music size={22} className="text-green-400 mr-2" />
+        <h1 className="text-base sm:text-xl font-bold text-white">{APP_NAME}</h1>
       </header>
 
       {/* Middle: Playlist or Lyrics */}
       <div className="flex-1 overflow-hidden relative">
         {/* Playlist */}
-        <div className={`absolute inset-0 overflow-y-auto p-4 transition-opacity duration-300 ${isLyricsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className={`absolute inset-0 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 transition-opacity duration-300 ${isLyricsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           <Playlist
             tracks={tracks}
             currentIndex={currentIndex}
@@ -72,7 +72,7 @@ function App() {
       </div>
 
       {/* Player (fixed bottom) */}
-      <div className="flex-none border-t border-neutral-800 bg-neutral-900/95 backdrop-blur-sm z-20">
+      <div className="flex-none border-t border-neutral-800 bg-neutral-900/95 backdrop-blur-sm z-20" style={{ paddingBottom: 'max(0rem, env(safe-area-inset-bottom))' }}>
         <Player
           currentTrack={currentTrack}
           isPlaying={isPlaying}
