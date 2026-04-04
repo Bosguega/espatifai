@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { LyricsLine } from '../types/track'
 import { findActiveLine } from '../utils/parseLrc'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Type } from 'lucide-react'
 import { useWakeLock } from '../hooks/useWakeLock'
 
 interface LyricsProps {
@@ -15,6 +15,8 @@ interface LyricsProps {
 
 type TabType = 'lyrics' | 'translation' | 'both'
 
+const FONT_SIZES = [12, 14, 16, 18, 20, 24]
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
@@ -23,11 +25,29 @@ function formatTime(seconds: number): string {
 
 export const Lyrics = memo(function Lyrics({ lyrics, translation, currentTime, title, artist, onClose }: LyricsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('lyrics')
+  const [fontSize, setFontSize] = useState(() => {
+    try {
+      const saved = localStorage.getItem('espatifai-lyrics-fs')
+      return saved ? parseInt(saved, 10) : 16
+    } catch {
+      return 16
+    }
+  })
+  const [showSizeSlider, setShowSizeSlider] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const activeLineRef = useRef<HTMLDivElement>(null)
 
   // Impede protecao de tela enquanto lyrics estiver aberto
   useWakeLock()
+
+  // Salva tamanho da fonte
+  useEffect(() => {
+    try {
+      localStorage.setItem('espatifai-lyrics-fs', String(fontSize))
+    } catch {
+      // ignorar
+    }
+  }, [fontSize])
 
   const hasTranslation = translation.length > 0
 
@@ -77,15 +97,45 @@ export const Lyrics = memo(function Lyrics({ lyrics, translation, currentTime, t
   return (
     <div className="flex flex-col h-full bg-neutral-950">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
-        <button onClick={onClose} className="p-1 text-neutral-400 hover:text-white transition-colors" aria-label="Voltar para playlist">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-neutral-800">
+        <button onClick={onClose} className="p-1 text-neutral-400 hover:text-white transition-colors flex-shrink-0" aria-label="Voltar para playlist">
           <ChevronLeft size={24} />
         </button>
+
         <div className="min-w-0 flex-1 text-right">
           <h3 className="font-semibold text-white truncate">{title}</h3>
           <p className="text-sm text-neutral-400 truncate">{artist}</p>
         </div>
+
+        {/* Font size toggle */}
+        <button
+          onClick={() => setShowSizeSlider(!showSizeSlider)}
+          className={`p-1.5 rounded-full transition-colors flex-shrink-0 ${showSizeSlider ? 'text-green-400 bg-green-400/10' : 'text-neutral-400 hover:text-white'
+            }`}
+          aria-label="Tamanho da fonte"
+        >
+          <Type size={18} />
+        </button>
       </div>
+
+      {/* Font size slider */}
+      {showSizeSlider && (
+        <div className="flex items-center gap-3 px-4 py-2 bg-neutral-900 border-b border-neutral-800">
+          <span className="text-xs text-neutral-500 flex-shrink-0">A</span>
+          <div className="flex-1 flex items-center gap-1">
+            {FONT_SIZES.map(size => (
+              <button
+                key={size}
+                onClick={() => setFontSize(size)}
+                className={`flex-1 h-1.5 rounded-full transition-all ${size <= fontSize ? 'bg-green-400' : 'bg-neutral-700'
+                  }`}
+                aria-label={`Fonte tamanho ${size}`}
+              />
+            ))}
+          </div>
+          <span className="text-xs text-neutral-500 flex-shrink-0" style={{ fontSize: 14 }}>A</span>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-neutral-800">
@@ -95,7 +145,7 @@ export const Lyrics = memo(function Lyrics({ lyrics, translation, currentTime, t
       </div>
 
       {/* Content */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4">
+      <div ref={containerRef} className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4" style={{ fontSize }}>
         {isBothTab ? (
           lyrics.map((line, i) => {
             const isActive = i === activeIndex
@@ -104,10 +154,10 @@ export const Lyrics = memo(function Lyrics({ lyrics, translation, currentTime, t
               <div key={i} ref={isActive ? activeLineRef : null} className={`transition-all duration-300 ${isActive ? 'scale-[1.02]' : ''}`}>
                 <div className="flex items-baseline gap-1.5 sm:gap-2">
                   <span className="text-[10px] sm:text-[11px] font-mono text-green-600 w-8 sm:w-10 text-right flex-shrink-0">{formatTime(line.time)}</span>
-                  <span className={`text-base sm:text-lg leading-relaxed ${isActive ? 'text-white font-semibold' : 'text-neutral-400'}`}>{line.text}</span>
+                  <span className={`leading-relaxed ${isActive ? 'text-white font-semibold' : 'text-neutral-400'}`}>{line.text}</span>
                 </div>
                 {matchingTranslation && (
-                  <p className="text-sm sm:text-base text-neutral-500 ml-8 sm:ml-12 mt-0.5 leading-relaxed">{matchingTranslation.text}</p>
+                  <p className="text-neutral-500 ml-8 sm:ml-12 mt-0.5 leading-relaxed" style={{ fontSize: fontSize * 0.85 }}>{matchingTranslation.text}</p>
                 )}
               </div>
             )
