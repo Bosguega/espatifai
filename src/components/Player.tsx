@@ -57,7 +57,10 @@ export function Player({
         </div>
         <button
           onClick={onOpenLyrics}
-          className="p-2 text-neutral-400 hover:text-green-400 transition-colors"
+          className={`p-2 transition-all duration-300 ${currentTrack.parsedLyrics.length > 0
+              ? 'text-green-400 animate-pulse drop-shadow-[0_0_8px_rgba(74,222,128,0.6)] hover:text-green-300'
+              : 'text-neutral-400 hover:text-green-400'
+            }`}
           aria-label="Ver letra"
         >
           <FileText size={20} />
