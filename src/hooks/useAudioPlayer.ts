@@ -2,145 +2,229 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Track } from '../types/track'
 
 interface UseAudioPlayerReturn {
-  audioRef: React.RefObject<HTMLAudioElement | null>
   currentTrack: Track | null
   currentIndex: number
   isPlaying: boolean
   currentTime: number
   duration: number
+  volume: number
+  error: string | null
   play: () => void
   pause: () => void
   playTrack: (index: number) => void
   nextTrack: () => void
   previousTrack: () => void
   seek: (time: number) => void
+  setVolume: (v: number) => void
+  clearError: () => void
+}
+
+const STORAGE_KEY = 'espatifai-player'
+
+interface PlayerState {
+  slug: string
+  time: number
+  volume: number
+}
+
+function loadState(): PlayerState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function saveState(slug: string, time: number, volume: number) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ slug, time, volume }))
+  } catch {
+    // localStorage pode estar desabilitado
+  }
 }
 
 export function useAudioPlayer(tracks: Track[]): UseAudioPlayerReturn {
+  // Audio element sempre no DOM para compatibilidade com iOS Safari
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const [currentIndex, setCurrentIndex] = useState<number>(-1)
-  const [isPlaying, setIsPlaying] = useState<boolean>(false)
-  const [currentTime, setCurrentTime] = useState<number>(0)
-  const [duration, setDuration] = useState<number>(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [volume, setVolumeState] = useState(() => {
+    const saved = loadState()
+    return saved?.volume ?? 1
+  })
+  const [error, setError] = useState<string | null>(null)
 
-  // Mantemos as funções num ref para evitar dependências circulares
-  const playTrackRef = useRef<((index: number) => void) | null>(null)
+  // Refs para evitar stale closures nos event listeners
+  const currentIndexRef = useRef(currentIndex)
+  const tracksRef = useRef(tracks)
+  currentIndexRef.current = currentIndex
+  tracksRef.current = tracks
 
-  // Inicializa o elemento de áudio uma única vez
+  // Inicializa o audio element e coloca no DOM (hidden)
   useEffect(() => {
     if (!audioRef.current) {
-      audioRef.current = document.createElement('audio')
-      audioRef.current.preload = 'metadata'
+      const audio = document.createElement('audio')
+      audio.preload = 'metadata'
+      audio.style.display = 'none'
+      document.body.appendChild(audio)
+      audioRef.current = audio
     }
 
     const audio = audioRef.current
 
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime)
+    // Restaura estado salvo
+    const saved = loadState()
+    if (saved) {
+      audio.volume = saved.volume
     }
 
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration)
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
+    const handleLoadedMetadata = () => setDuration(audio.duration)
+    const handleError = () => {
+      const code = audio.error?.code
+      const messages: Record<number, string> = {
+        1: 'Reprodução cancelada pelo usuário',
+        2: 'Erro de rede ao carregar o áudio',
+        3: 'Falha ao decodificar o arquivo de áudio',
+        4: 'Formato de áudio não suportado',
+      }
+      setError(messages[code ?? 0] ?? 'Erro desconhecido ao carregar o áudio')
+      setIsPlaying(false)
     }
-
     const handleEnded = () => {
       setIsPlaying(false)
       setCurrentTime(0)
-      // Auto-play próxima faixa
-      if (playTrackRef.current && currentIndex < tracks.length - 1) {
-        playTrackRef.current(currentIndex + 1)
-      } else if (playTrackRef.current && tracks.length > 0) {
-        playTrackRef.current(0)
+      const idx = currentIndexRef.current
+      const len = tracksRef.current.length
+      // Auto-play próxima faixa (loop)
+      if (len > 0) {
+        const next = (idx + 1) % len
+          // Importar playTrack via ref para evitar stale closure
+          ; (audioRef.current as any)._playTrack?.(next)
       }
     }
 
     audio.addEventListener('timeupdate', handleTimeUpdate)
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
+    audio.addEventListener('error', handleError)
     audio.addEventListener('ended', handleEnded)
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate)
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      audio.removeEventListener('error', handleError)
       audio.removeEventListener('ended', handleEnded)
-    }
-  }, [currentIndex, tracks.length])
-
-  const play = useCallback(() => {
-    if (audioRef.current && currentTrack) {
-      audioRef.current.play()
-      setIsPlaying(true)
-    }
-  }, [currentTrack])
-
-  const pause = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      setIsPlaying(false)
+      // Nao removemos o audio do DOM para evitar leaks em re-renders
     }
   }, [])
 
-  const playTrack = useCallback((index: number) => {
-    if (index < 0 || index >= tracks.length || !audioRef.current) return
+  // Salva estado periodicamente
+  useEffect(() => {
+    if (currentTrack) {
+      saveState(currentTrack.slug, currentTime, volume)
+    }
+  }, [currentTrack, currentTime, volume])
 
+  const playTrack = useCallback((index: number) => {
+    const audio = audioRef.current
+    if (index < 0 || index >= tracks.length || !audio) return
+
+    setError(null)
     const track = tracks[index]
     setCurrentTrack(track)
     setCurrentIndex(index)
     setCurrentTime(0)
     setDuration(0)
 
-    audioRef.current.src = track.src
-    audioRef.current.load()
-    audioRef.current.play()
+    audio.src = track.src
+    audio.load()
+    audio.play().catch(() => {
+      setError('Nao foi possivel reproduzir o áudio')
+      setIsPlaying(false)
+    })
     setIsPlaying(true)
   }, [tracks])
 
-  // Atualiza o ref com a função mais recente
+  // Expose playTrack no audio element para o handleEnded acessar
   useEffect(() => {
-    playTrackRef.current = playTrack
+    if (audioRef.current) {
+      ; (audioRef.current as any)._playTrack = playTrack
+    }
   }, [playTrack])
 
-  const nextTrack = useCallback(() => {
-    if (currentIndex < tracks.length - 1) {
-      playTrack(currentIndex + 1)
-    } else if (tracks.length > 0) {
-      playTrack(0)
+  const play = useCallback(() => {
+    const audio = audioRef.current
+    if (audio && currentTrack) {
+      audio.play().catch(() => setError('Nao foi possivel reproduzir o áudio'))
+      setIsPlaying(true)
     }
-  }, [currentIndex, tracks.length, playTrack])
+  }, [currentTrack])
+
+  const pause = useCallback(() => {
+    audioRef.current?.pause()
+    setIsPlaying(false)
+  }, [])
+
+  const nextTrack = useCallback(() => {
+    const idx = currentIndexRef.current
+    const len = tracksRef.current.length
+    if (len === 0) return
+    playTrack((idx + 1) % len)
+  }, [playTrack])
 
   const previousTrack = useCallback(() => {
-    if (!audioRef.current) return
+    const audio = audioRef.current
+    if (!audio) return
 
-    // Se já tocou mais de 3 segundos, volta ao início da faixa atual
-    if (audioRef.current.currentTime > 3) {
-      audioRef.current.currentTime = 0
+    if (audio.currentTime > 3) {
+      audio.currentTime = 0
       setCurrentTime(0)
-    } else if (currentIndex > 0) {
-      playTrack(currentIndex - 1)
-    } else if (tracks.length > 0) {
-      playTrack(tracks.length - 1)
+    } else {
+      const idx = currentIndexRef.current
+      const len = tracksRef.current.length
+      if (len === 0) return
+      playTrack(idx > 0 ? idx - 1 : len - 1)
     }
-  }, [currentIndex, tracks.length, playTrack])
+  }, [playTrack])
 
   const seek = useCallback((time: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = time
+    const audio = audioRef.current
+    if (audio) {
+      audio.currentTime = time
       setCurrentTime(time)
     }
   }, [])
 
+  const setVolume = useCallback((v: number) => {
+    const clamped = Math.max(0, Math.min(1, v))
+    if (audioRef.current) {
+      audioRef.current.volume = clamped
+    }
+    setVolumeState(clamped)
+  }, [])
+
+  const clearError = useCallback(() => setError(null), [])
+
   return {
-    audioRef,
     currentTrack,
     currentIndex,
     isPlaying,
     currentTime,
     duration,
+    volume,
+    error,
     play,
     pause,
     playTrack,
     nextTrack,
     previousTrack,
     seek,
+    setVolume,
+    clearError,
   }
 }

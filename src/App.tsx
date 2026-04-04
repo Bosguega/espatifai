@@ -25,12 +25,15 @@ function App() {
     isPlaying,
     currentTime,
     duration,
+    volume,
+    error,
     play,
     pause,
     playTrack,
     nextTrack,
     previousTrack,
     seek,
+    setVolume,
   } = useAudioPlayer(tracks)
 
   const handleOpenLyrics = () => {
@@ -50,6 +53,13 @@ function App() {
         <Music size={22} className="text-green-400 mr-2" />
         <h1 className="text-base sm:text-xl font-bold text-white">{APP_NAME}</h1>
       </header>
+
+      {/* Error banner */}
+      {error && (
+        <div className="flex-none bg-red-900/80 border-b border-red-700 px-4 py-2 text-center">
+          <p className="text-sm text-red-200">{error}</p>
+        </div>
+      )}
 
       {/* Middle: Playlist or Lyrics */}
       <div className="flex-1 overflow-hidden relative">
@@ -92,11 +102,13 @@ function App() {
           isPlaying={isPlaying}
           currentTime={currentTime}
           duration={duration}
+          volume={volume}
           onPlay={play}
           onPause={pause}
           onNext={nextTrack}
           onPrevious={previousTrack}
           onSeek={seek}
+          onVolumeChange={setVolume}
           onOpenLyrics={handleOpenLyrics}
         />
       </div>

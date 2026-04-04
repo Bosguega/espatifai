@@ -1,4 +1,5 @@
-import { FileText, Music } from 'lucide-react'
+import { FileText, Music, Volume2, VolumeX } from 'lucide-react'
+import { useState } from 'react'
 import type { Track } from '../types/track'
 import { Controls } from './Controls'
 import { ProgressBar } from './ProgressBar'
@@ -8,11 +9,13 @@ interface PlayerProps {
   isPlaying: boolean
   currentTime: number
   duration: number
+  volume: number
   onPlay: () => void
   onPause: () => void
   onNext: () => void
   onPrevious: () => void
   onSeek: (time: number) => void
+  onVolumeChange: (v: number) => void
   onOpenLyrics: () => void
 }
 
@@ -21,20 +24,26 @@ export function Player({
   isPlaying,
   currentTime,
   duration,
+  volume,
   onPlay,
   onPause,
   onNext,
   onPrevious,
   onSeek,
+  onVolumeChange,
   onOpenLyrics,
 }: PlayerProps) {
+  const [showVolume, setShowVolume] = useState(false)
+
   if (!currentTrack) {
     return (
       <div className="w-full p-4 text-center text-neutral-500">
-        <p>Selecione uma música para começar</p>
+        <p>Selecione uma musica para comecar</p>
       </div>
     )
   }
+
+  const hasLyrics = currentTrack.parsedLyrics.length > 0
 
   return (
     <div className="w-full flex flex-col gap-2 sm:gap-4 px-3 sm:px-4 pb-3 sm:pb-4 pt-2 sm:pt-4">
@@ -55,17 +64,50 @@ export function Player({
           <h3 className="text-sm sm:text-base font-semibold text-white truncate">{currentTrack.title}</h3>
           <p className="text-xs sm:text-sm text-neutral-400 truncate">{currentTrack.artist}</p>
         </div>
+
+        {/* Volume toggle (desktop) */}
         <button
-          onClick={onOpenLyrics}
-          className={`p-1.5 sm:p-2 transition-all duration-300 flex-shrink-0 ${currentTrack.parsedLyrics.length > 0
-            ? 'text-green-400 animate-pulse drop-shadow-[0_0_8px_rgba(74,222,128,0.6)] hover:text-green-300'
-            : 'text-neutral-400 hover:text-green-400'
+          onClick={() => setShowVolume(!showVolume)}
+          className="hidden sm:flex p-1.5 text-neutral-400 hover:text-white transition-colors flex-shrink-0"
+          aria-label="Volume"
+        >
+          {volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        </button>
+
+        {/* Volume slider */}
+        {showVolume && (
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+            className="hidden sm:block w-20 h-1.5 rounded-full appearance-none cursor-pointer flex-shrink-0"
+            style={{
+              background: `linear-gradient(to right, #1db954 ${volume * 100}%, #333 ${volume * 100}%)`,
+            }}
+            aria-label="Volume"
+          />
+        )}
+
+        {/* Lyrics button */}
+        <button
+          onClick={() => {
+            if (hasLyrics) onOpenLyrics()
+          }}
+          className={`p-1.5 sm:p-2 transition-all duration-300 flex-shrink-0 ${hasLyrics
+            ? 'text-green-400 drop-shadow-[0_0_6px_rgba(74,222,128,0.5)] hover:text-green-300'
+            : 'text-neutral-600 cursor-not-allowed'
             }`}
-          aria-label="Ver letra"
+          aria-label={hasLyrics ? 'Ver letra' : 'Letra indisponivel'}
         >
           <FileText size={18} className="sm:w-5 sm:h-5" />
         </button>
       </div>
+
+      {/* Error dismiss */}
+      {/* (Error is shown as banner in App.tsx, no inline error needed here) */}
 
       {/* Progress Bar */}
       <ProgressBar

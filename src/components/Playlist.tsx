@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { Track } from '../types/track'
 
 interface PlaylistProps {
@@ -6,7 +7,7 @@ interface PlaylistProps {
   onSelectTrack: (index: number) => void
 }
 
-export function Playlist({ tracks, currentIndex, onSelectTrack }: PlaylistProps) {
+export const Playlist = memo(function Playlist({ tracks, currentIndex, onSelectTrack }: PlaylistProps) {
   return (
     <div className="w-full overflow-y-auto flex-1">
       <h2 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 px-1 sm:px-2">Playlist</h2>
@@ -34,4 +35,4 @@ export function Playlist({ tracks, currentIndex, onSelectTrack }: PlaylistProps)
       </ul>
     </div>
   )
-}
+})

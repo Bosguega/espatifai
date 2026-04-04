@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react'
 
 interface ControlsProps {
@@ -8,7 +9,7 @@ interface ControlsProps {
   onPrevious: () => void
 }
 
-export function Controls({ isPlaying, onPlay, onPause, onNext, onPrevious }: ControlsProps) {
+export const Controls = memo(function Controls({ isPlaying, onPlay, onPause, onNext, onPrevious }: ControlsProps) {
   return (
     <div className="flex items-center justify-center gap-3 sm:gap-6">
       <button
@@ -30,10 +31,10 @@ export function Controls({ isPlaying, onPlay, onPause, onNext, onPrevious }: Con
       <button
         onClick={onNext}
         className="p-1.5 sm:p-2 text-neutral-300 hover:text-white transition-colors"
-        aria-label="Próxima faixa"
+        aria-label="Proxima faixa"
       >
         <SkipForward size={20} className="sm:w-6 sm:h-6" />
       </button>
     </div>
   )
-}
+})

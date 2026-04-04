@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 interface ProgressBarProps {
   currentTime: number
   duration: number
@@ -11,7 +13,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-export function ProgressBar({ currentTime, duration, onSeek }: ProgressBarProps) {
+export const ProgressBar = memo(function ProgressBar({ currentTime, duration, onSeek }: ProgressBarProps) {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,12 +21,14 @@ export function ProgressBar({ currentTime, duration, onSeek }: ProgressBarProps)
     onSeek(value)
   }
 
+  const safeMax = duration > 0 ? duration : 0
+
   return (
     <div className="w-full flex flex-col gap-1">
       <input
         type="range"
         min={0}
-        max={duration || 0}
+        max={safeMax}
         step={0.1}
         value={currentTime}
         onChange={handleChange}
@@ -32,7 +36,7 @@ export function ProgressBar({ currentTime, duration, onSeek }: ProgressBarProps)
         style={{
           background: `linear-gradient(to right, #1db954 ${progress}%, #333 ${progress}%)`,
         }}
-        aria-label="Progresso da música"
+        aria-label="Progresso da musica"
       />
       <div className="flex justify-between text-xs text-neutral-400">
         <span>{formatTime(currentTime)}</span>
@@ -40,4 +44,4 @@ export function ProgressBar({ currentTime, duration, onSeek }: ProgressBarProps)
       </div>
     </div>
   )
-}
+})

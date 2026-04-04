@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LyricsLine } from '../types/track'
 import { findActiveLine } from '../utils/parseLrc'
 import { ChevronLeft } from 'lucide-react'
@@ -27,9 +27,14 @@ export function Lyrics({ lyrics, translation, currentTime, title, artist, onClos
 
   const hasTranslation = translation.length > 0
 
-  const activeIndex = activeTab === 'both'
-    ? findActiveLine(lyrics, currentTime)
-    : findActiveLine(activeTab === 'lyrics' ? lyrics : translation, currentTime)
+  // Memoized activeIndex calculation
+  const activeIndex = useMemo(() => {
+    if (activeTab === 'both') {
+      return findActiveLine(lyrics, currentTime)
+    }
+    const lines = activeTab === 'lyrics' ? lyrics : translation
+    return findActiveLine(lines, currentTime)
+  }, [activeTab, lyrics, translation, currentTime])
 
   const lines = activeTab === 'lyrics' ? lyrics : translation
   const isBothTab = activeTab === 'both'
@@ -82,7 +87,7 @@ export function Lyrics({ lyrics, translation, currentTime, title, artist, onClos
       <div className="flex border-b border-neutral-800">
         <button onClick={() => setActiveTab('lyrics')} className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${activeTab === 'lyrics' ? 'text-green-400 border-b-2 border-green-400' : 'text-neutral-400 hover:text-white'}`}>Letra</button>
         <button onClick={() => setActiveTab('both')} className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${activeTab === 'both' ? 'text-green-400 border-b-2 border-green-400' : 'text-neutral-400 hover:text-white'}`}>Ambos</button>
-        <button onClick={() => setActiveTab('translation')} className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${activeTab === 'translation' ? 'text-green-400 border-b-2 border-green-400' : hasTranslation ? 'text-neutral-400 hover:text-white' : 'text-neutral-700 cursor-not-allowed'}`} disabled={!hasTranslation}>Tradução</button>
+        <button onClick={() => setActiveTab('translation')} className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${activeTab === 'translation' ? 'text-green-400 border-b-2 border-green-400' : hasTranslation ? 'text-neutral-400 hover:text-white' : 'text-neutral-700 cursor-not-allowed'}`} disabled={!hasTranslation}>Traducao</button>
       </div>
 
       {/* Content */}
