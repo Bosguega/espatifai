@@ -2,10 +2,16 @@ import type { Track } from '../types/track'
 import { DEFAULT_ARTIST } from '../config/appKeys'
 import { parseLrc } from './parseLrc'
 
-const AUDIO = import.meta.glob('../assets/tracks/*/audio.mp3', { eager: true, query: '?url' })
-const COVERS = import.meta.glob('../assets/tracks/*/cover.jpg', { eager: true, query: '?url' })
-const LYRICS = import.meta.glob('../assets/tracks/*/lyrics.lrc', { eager: true, query: '?raw' })
-const TRANSLATIONS = import.meta.glob('../assets/tracks/*/translation.*.lrc', { eager: true, query: '?raw' })
+interface ManifestTrack {
+  slug: string
+  hasCover: boolean
+  lyrics: string
+  translation: string
+}
+
+interface Manifest {
+  tracks: ManifestTrack[]
+}
 
 function slugToTitle(slug: string): string {
   return slug
@@ -13,54 +19,38 @@ function slugToTitle(slug: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function slugFromPath(key: string): string {
-  return key.split('/').at(-2)!
-}
-
-function findKey(map: Record<string, unknown>, slug: string): string | undefined {
-  return Object.keys(map).find(k => slugFromPath(k) === slug)
-}
-
-function resolveUrl(mod: unknown): string {
-  if (typeof mod === 'string') return mod
-  return (mod as { default: string }).default
-}
-
-function resolveRaw(mod: unknown): string {
-  if (typeof mod === 'string') return mod
-  return (mod as { default: string }).default
-}
-
-export function loadTracks(): Track[] {
-  const slugs = new Set(Object.keys(AUDIO).map(slugFromPath))
-
-  let id = 1
-  const tracks: Track[] = []
-
-  for (const slug of slugs) {
-    const audioKey = findKey(AUDIO, slug)
-    if (!audioKey) continue
-
-    const coverKey = findKey(COVERS, slug)
-    const lyricsKey = findKey(LYRICS, slug)
-    const translationKey = findKey(TRANSLATIONS, slug)
-
-    const lyricsRaw = lyricsKey ? resolveRaw(LYRICS[lyricsKey]) : ''
-    const translationRaw = translationKey ? resolveRaw(TRANSLATIONS[translationKey]) : ''
-
-    tracks.push({
-      id: id++,
-      slug,
-      title: slugToTitle(slug),
-      artist: DEFAULT_ARTIST,
-      src: resolveUrl(AUDIO[audioKey]),
-      cover: coverKey ? resolveUrl(COVERS[coverKey]) : '',
-      lyrics: lyricsRaw,
-      translation: translationRaw,
-      parsedLyrics: parseLrc(lyricsRaw),
-      parsedTranslation: parseLrc(translationRaw),
-    })
+/**
+ * Carrega as musicas a partir do manifest gerado em build time.
+ * Os MP3s ficam em public/tracks/ — servidos como estaticos,
+ * sem serem embedados no bundle JS.
+ *
+ * @param tracksPath - Prefixo URL para os arquivos de audio.
+ *   Ex: '/espatifai/tracks' em producao, '/tracks' em dev.
+ */
+export async function loadTracks(tracksPath: string): Promise<Track[]> {
+  const res = await fetch(`${tracksPath}/manifest.json`)
+  if (!res.ok) {
+    console.error('[loadTracks] Failed to fetch manifest:', res.status)
+    return []
   }
 
-  return tracks
+  const manifest: Manifest = await res.json()
+
+  return manifest.tracks.map((t, index) => {
+    const src = `${tracksPath}/${t.slug}/audio.mp3`
+    const cover = t.hasCover ? `${tracksPath}/${t.slug}/cover.jpg` : ''
+
+    return {
+      id: index + 1,
+      slug: t.slug,
+      title: slugToTitle(t.slug),
+      artist: DEFAULT_ARTIST,
+      src,
+      cover,
+      lyrics: t.lyrics,
+      translation: t.translation,
+      parsedLyrics: parseLrc(t.lyrics),
+      parsedTranslation: parseLrc(t.translation),
+    }
+  })
 }

@@ -1,17 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Music } from 'lucide-react'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { Player } from './components/Player'
 import { Playlist } from './components/Playlist'
 import { Lyrics } from './components/Lyrics'
 import { loadTracks } from './utils/loadTracks'
-import { APP_NAME } from './config/appKeys'
+import { APP_NAME, APP_PREFIX } from './config/appKeys'
 import type { Track } from './types/track'
 
-const tracks: Track[] = loadTracks()
+const isProd = import.meta.env.PROD
+const TRACKS_PATH = isProd ? `/${APP_PREFIX}/tracks` : '/tracks'
 
 function App() {
+  const [tracks, setTracks] = useState<Track[]>([])
   const [isLyricsOpen, setIsLyricsOpen] = useState(false)
+
+  useEffect(() => {
+    loadTracks(TRACKS_PATH).then(setTracks)
+  }, [])
 
   const {
     currentTrack,
@@ -47,27 +53,35 @@ function App() {
 
       {/* Middle: Playlist or Lyrics */}
       <div className="flex-1 overflow-hidden relative">
-        {/* Playlist */}
-        <div className={`absolute inset-0 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 transition-opacity duration-300 ${isLyricsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-          <Playlist
-            tracks={tracks}
-            currentIndex={currentIndex}
-            onSelectTrack={playTrack}
-          />
-        </div>
-
-        {/* Lyrics panel */}
-        {currentTrack && (
-          <div className={`absolute inset-0 overflow-hidden transition-opacity duration-300 ${isLyricsOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <Lyrics
-              lyrics={currentTrack.parsedLyrics}
-              translation={currentTrack.parsedTranslation}
-              currentTime={currentTime}
-              title={currentTrack.title}
-              artist={currentTrack.artist}
-              onClose={handleCloseLyrics}
-            />
+        {tracks.length === 0 ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className="text-neutral-500 text-sm">Carregando musicas...</p>
           </div>
+        ) : (
+          <>
+            {/* Playlist */}
+            <div className={`absolute inset-0 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 transition-opacity duration-300 ${isLyricsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+              <Playlist
+                tracks={tracks}
+                currentIndex={currentIndex}
+                onSelectTrack={playTrack}
+              />
+            </div>
+
+            {/* Lyrics panel */}
+            {currentTrack && (
+              <div className={`absolute inset-0 overflow-hidden transition-opacity duration-300 ${isLyricsOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <Lyrics
+                  lyrics={currentTrack.parsedLyrics}
+                  translation={currentTrack.parsedTranslation}
+                  currentTime={currentTime}
+                  title={currentTrack.title}
+                  artist={currentTrack.artist}
+                  onClose={handleCloseLyrics}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 

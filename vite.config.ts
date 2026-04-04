@@ -49,6 +49,22 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,jpg}'],
         globIgnores: ['**/*.mp3'],
         navigateFallback: undefined,
+        // Runtime caching para MP3s: CacheFirst com expiracao
+        // Primeira execucao: baixa da rede e salva no cache
+        // Execucoes seguintes: serve do cache (sem re-download)
+        runtimeCaching: [
+          {
+            urlPattern: /\/tracks\/.*\.mp3$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'espatifai-audio-v1',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 dias
+              },
+            },
+          },
+        ],
       } : undefined,
       devOptions: {
         enabled: false,
