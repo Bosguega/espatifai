@@ -45,32 +45,29 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Playlist */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <Playlist
-            tracks={tracks}
-            currentIndex={currentIndex}
-            onSelectTrack={playTrack}
-          />
-        </div>
-
-        {/* Player (fixed at bottom) */}
-        <div className="border-t border-neutral-800 bg-neutral-900">
-          <Player
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            onPlay={play}
-            onPause={pause}
-            onNext={nextTrack}
-            onPrevious={previousTrack}
-            onSeek={seek}
-            onOpenLyrics={handleOpenLyrics}
-          />
-        </div>
+      <main className="flex-1 overflow-y-auto p-4 pb-32">
+        <Playlist
+          tracks={tracks}
+          currentIndex={currentIndex}
+          onSelectTrack={playTrack}
+        />
       </main>
+
+      {/* Player (fixed at bottom) */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-neutral-800 bg-neutral-900/95 backdrop-blur-sm z-30">
+        <Player
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          currentTime={currentTime}
+          duration={duration}
+          onPlay={play}
+          onPause={pause}
+          onNext={nextTrack}
+          onPrevious={previousTrack}
+          onSeek={seek}
+          onOpenLyrics={handleOpenLyrics}
+        />
+      </div>
 
       {/* Lyrics Drawer */}
       {currentTrack && (
