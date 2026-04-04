@@ -15,7 +15,7 @@ interface LyricsProps {
 
 type TabType = 'lyrics' | 'translation' | 'both'
 
-const FONT_SIZES = [12, 14, 16, 18, 20, 24]
+const FONT_SIZES = [18, 20, 22, 24, 26, 28]
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -28,9 +28,9 @@ export const Lyrics = memo(function Lyrics({ lyrics, translation, currentTime, t
   const [fontSize, setFontSize] = useState(() => {
     try {
       const saved = localStorage.getItem('espatifai-lyrics-fs')
-      return saved ? parseInt(saved, 10) : 16
+      return saved ? parseInt(saved, 10) : 18
     } catch {
-      return 16
+      return 18
     }
   })
   const [showSizeSlider, setShowSizeSlider] = useState(false)
