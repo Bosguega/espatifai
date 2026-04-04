@@ -73,54 +73,53 @@ function App() {
     <div className="flex flex-col h-[100dvh] bg-neutral-950 overflow-hidden">
       {/* Header (fixed top) */}
       <header className="flex-none flex items-center justify-between px-4 pt-3 pb-3 sm:py-3 border-b border-neutral-800 bg-neutral-950 z-20" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+        {/* Left: back button */}
+        <div className="w-8">
           {isLyricsOpen && (
-            <button onClick={handleCloseLyrics} className="p-1 text-neutral-400 hover:text-white transition-colors flex-shrink-0" aria-label="Voltar para playlist">
+            <button onClick={handleCloseLyrics} className="p-1 text-neutral-400 hover:text-white transition-colors" aria-label="Voltar para playlist">
               <ChevronLeft size={22} />
             </button>
           )}
-          {isLyricsOpen && currentTrack ? (
-            <div className="min-w-0">
-              <h1 className="text-sm sm:text-base font-semibold text-white truncate">{currentTrack.title}</h1>
-              <p className="text-xs text-neutral-400 truncate">{currentTrack.artist}</p>
-            </div>
-          ) : (
+        </div>
+
+        {/* Center: app name */}
+        <div className="flex items-center gap-2">
+          <Music size={22} className="text-green-400" />
+          <h1 className="text-base sm:text-xl font-bold text-white">{APP_NAME}</h1>
+        </div>
+
+        {/* Right: font size */}
+        <div className="flex items-center gap-2 w-8 justify-end">
+          {isLyricsOpen && (
             <>
-              <Music size={22} className="text-green-400 mr-2 flex-shrink-0" />
-              <h1 className="text-base sm:text-xl font-bold text-white">{APP_NAME}</h1>
+              {showFontSizeSlider && (
+                <div className="hidden sm:flex fixed top-14 left-1/2 -translate-x-1/2 items-center gap-1.5 bg-neutral-900 px-3 py-1.5 rounded-full border border-neutral-800 z-30">
+                  <span className="text-xs text-neutral-500">A</span>
+                  <div className="flex items-center gap-0.5 w-24">
+                    {[18, 20, 22, 24, 26, 28].map(size => (
+                      <button
+                        key={size}
+                        onClick={() => setLyricsFontSize(size)}
+                        className={`flex-1 h-1.5 rounded-full transition-all ${size <= lyricsFontSize ? 'bg-green-400' : 'bg-neutral-700'
+                          }`}
+                        aria-label={`Fonte tamanho ${size}`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-neutral-500" style={{ fontSize: 14 }}>A</span>
+                </div>
+              )}
+              <button
+                onClick={() => setShowFontSizeSlider(!showFontSizeSlider)}
+                className={`p-1.5 rounded-full transition-colors ${showFontSizeSlider ? 'text-green-400 bg-green-400/10' : 'text-neutral-400 hover:text-white'
+                  }`}
+                aria-label="Tamanho da fonte"
+              >
+                <Type size={18} />
+              </button>
             </>
           )}
         </div>
-        {isLyricsOpen && (
-          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-            {/* Font size slider */}
-            {showFontSizeSlider && (
-              <div className="hidden sm:flex items-center gap-2">
-                <span className="text-xs text-neutral-500">A</span>
-                <div className="flex items-center gap-0.5 w-24">
-                  {[18, 20, 22, 24, 26, 28].map(size => (
-                    <button
-                      key={size}
-                      onClick={() => setLyricsFontSize(size)}
-                      className={`flex-1 h-1.5 rounded-full transition-all ${size <= lyricsFontSize ? 'bg-green-400' : 'bg-neutral-700'
-                        }`}
-                      aria-label={`Fonte tamanho ${size}`}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs text-neutral-500" style={{ fontSize: 14 }}>A</span>
-              </div>
-            )}
-            <button
-              onClick={() => setShowFontSizeSlider(!showFontSizeSlider)}
-              className={`p-1.5 rounded-full transition-colors ${showFontSizeSlider ? 'text-green-400 bg-green-400/10' : 'text-neutral-400 hover:text-white'
-                }`}
-              aria-label="Tamanho da fonte"
-            >
-              <Type size={18} />
-            </button>
-          </div>
-        )}
       </header>
 
       {/* Error banner */}
