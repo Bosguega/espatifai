@@ -104,7 +104,7 @@ function App() {
       </div>
 
       {/* Player (fixed bottom) */}
-      <div className="flex-none border-t border-neutral-800 bg-neutral-900/95 backdrop-blur-sm z-20" style={{ paddingBottom: 'max(0rem, env(safe-area-inset-bottom))' }}>
+      <div className="flex-none border-t border-neutral-800 bg-neutral-900/95 backdrop-blur-sm z-20" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0.5rem))' }}>
         <Player
           currentTrack={currentTrack}
           isPlaying={isPlaying}
