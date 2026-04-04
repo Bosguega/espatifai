@@ -93,7 +93,7 @@ function App() {
           {isLyricsOpen && (
             <>
               {showFontSizeSlider && (
-                <div className="hidden sm:flex fixed top-14 left-1/2 -translate-x-1/2 items-center gap-1.5 bg-neutral-900 px-3 py-1.5 rounded-full border border-neutral-800 z-30">
+                <div className="flex fixed top-14 left-1/2 -translate-x-1/2 items-center gap-1.5 bg-neutral-900 px-3 py-1.5 rounded-full border border-neutral-800 z-30">
                   <span className="text-xs text-neutral-500">A</span>
                   <div className="flex items-center gap-0.5 w-24">
                     {[18, 20, 22, 24, 26, 28].map(size => (
