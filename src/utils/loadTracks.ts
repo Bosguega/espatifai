@@ -1,4 +1,5 @@
 import type { Track } from '../types/track'
+import { DEFAULT_ARTIST } from '../config/appKeys'
 
 const AUDIO = import.meta.glob('../assets/tracks/*/audio.mp3', { eager: true, as: 'url' })
 const COVERS = import.meta.glob('../assets/tracks/*/cover.jpg', { eager: true, as: 'url' })
@@ -48,7 +49,7 @@ export function loadTracks(): Track[] {
       id: id++,
       slug,
       title: slugToTitle(slug),
-      artist: 'Espatifai',
+      artist: DEFAULT_ARTIST,
       src: resolveUrl(AUDIO[audioKey]),
       cover: coverKey ? resolveUrl(COVERS[coverKey]) : '',
       lyrics: lyricsKey ? resolveRaw(LYRICS[lyricsKey]) : '',

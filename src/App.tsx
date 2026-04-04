@@ -5,6 +5,7 @@ import { Player } from './components/Player'
 import { Playlist } from './components/Playlist'
 import { LyricsDrawer } from './components/LyricsDrawer'
 import { loadTracks } from './utils/loadTracks'
+import { APP_NAME } from './config/appKeys'
 import type { Track } from './types/track'
 
 const tracks: Track[] = loadTracks()
@@ -41,7 +42,7 @@ function App() {
       {/* Header */}
       <header className="flex items-center justify-center p-4 border-b border-neutral-800">
         <Music size={24} className="text-green-400 mr-2" />
-        <h1 className="text-xl font-bold text-white">Espatifai</h1>
+        <h1 className="text-xl font-bold text-white">{APP_NAME}</h1>
       </header>
 
       {/* Main Content */}
