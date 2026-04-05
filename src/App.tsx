@@ -127,6 +127,23 @@ function App() {
     } catch { /* ignorar */ }
   }, [])
 
+  const handleSelectAll = useCallback(() => {
+    setSelectedTracks(prev => {
+      if (prev.size === tracks.length) {
+        // Deselect all — keep at least 1
+        if (tracks.length > 0) {
+          const first = new Set([tracks[0].id])
+          try { localStorage.setItem('espatifai-selected', JSON.stringify([...first])) } catch { }
+          return first
+        }
+        return prev
+      }
+      const all = new Set(tracks.map(t => t.id))
+      try { localStorage.setItem('espatifai-selected', JSON.stringify([...all])) } catch { }
+      return all
+    })
+  }, [tracks])
+
   return (
     <div className="flex flex-col h-[100dvh] bg-neutral-950 overflow-hidden">
       {/* Header (fixed top) */}
@@ -207,6 +224,7 @@ function App() {
                 currentIndex={currentIndex}
                 onSelectTrack={playTrack}
                 onToggleTrack={handleToggleTrack}
+                onSelectAll={handleSelectAll}
                 onReorder={handleReorder}
               />
             </div>

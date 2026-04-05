@@ -26,6 +26,7 @@ interface PlaylistProps {
   currentIndex: number
   onSelectTrack: (index: number) => void
   onToggleTrack: (id: number) => void
+  onSelectAll: () => void
   onReorder: (order: number[]) => void
 }
 
@@ -59,10 +60,10 @@ function SortableTrackCard({
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors cursor-pointer group ${isActive
-          ? 'bg-green-950/30 border-green-500/50'
-          : isSelected
-            ? 'bg-neutral-900 border-green-700/30 hover:border-green-600/40'
-            : 'bg-neutral-900 border-green-900/20 hover:border-green-800/30'
+        ? 'bg-green-950/30 border-green-500/50'
+        : isSelected
+          ? 'bg-neutral-900 border-green-700/30 hover:border-green-600/40'
+          : 'bg-neutral-900 border-green-900/20 hover:border-green-800/30'
         }`}
       onClick={onSelect}
     >
@@ -82,8 +83,8 @@ function SortableTrackCard({
           onToggle()
         }}
         className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected
-            ? 'bg-green-500/80 border-green-500/80'
-            : 'bg-transparent border-green-800/40 group-hover:border-green-700/50'
+          ? 'bg-green-500/80 border-green-500/80'
+          : 'bg-transparent border-green-800/40 group-hover:border-green-700/50'
           }`}
         aria-label={isSelected ? 'Desselecionar' : 'Selecionar'}
       >
@@ -117,6 +118,7 @@ export const Playlist = memo(function Playlist({
   currentIndex,
   onSelectTrack,
   onToggleTrack,
+  onSelectAll,
   onReorder,
 }: PlaylistProps) {
   const [draggingId, setDraggingId] = useState<number | null>(null)
@@ -152,7 +154,21 @@ export const Playlist = memo(function Playlist({
 
   return (
     <div className="w-full overflow-y-auto flex-1">
-      <h2 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 px-1 sm:px-2">Playlist</h2>
+      <div className="flex items-center gap-2 mb-2 sm:mb-3 px-1 sm:px-2">
+        <button
+          onClick={onSelectAll}
+          className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedTracks.size === tracks.length
+            ? 'bg-green-500/80 border-green-500/80'
+            : selectedTracks.size > 0
+              ? 'bg-green-500/40 border-green-500/60'
+              : 'bg-transparent border-green-800/40 hover:border-green-700/50'
+            }`}
+          aria-label={selectedTracks.size === tracks.length ? 'Desselecionar tudo' : 'Selecionar tudo'}
+        >
+          {selectedTracks.size === tracks.length && <Check size={12} className="text-black" />}
+        </button>
+        <h2 className="text-base sm:text-lg font-semibold">Playlist</h2>
+      </div>
 
       <DndContext
         sensors={sensors}
