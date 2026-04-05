@@ -5,7 +5,7 @@ import { slugToTitle } from './slugToTitle'
 
 interface ManifestTrack {
   slug: string
-  hasCover: boolean
+  coverExt: string
   lyrics: string
   translation: string
 }
@@ -33,7 +33,7 @@ export async function loadTracks(tracksPath: string): Promise<Track[]> {
 
   return manifest.tracks.map((t, index) => {
     const src = `${tracksPath}/${t.slug}/audio.mp3`
-    const cover = t.hasCover ? `${tracksPath}/${t.slug}/cover.jpg` : ''
+    const cover = t.coverExt ? `${tracksPath}/${t.slug}/cover.${t.coverExt}` : ''
 
     return {
       id: index + 1,

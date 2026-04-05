@@ -50,9 +50,11 @@ const tracks = slugs.map(slug => {
     }
   }
 
+  const coverFile = readdirSync(dir).find(f => /^cover\.(jpe?g|png|gif|webp)$/i.test(f)) || ''
+
   return {
     slug,
-    hasCover: existsSync(join(dir, 'cover.jpg')),
+    coverExt: coverFile ? coverFile.split('.').pop() : '',
     lyrics: existsSync(lyricsPath) ? readFileSync(lyricsPath, 'utf-8') : '',
     translation: translationFile ? readFileSync(join(dir, translationFile), 'utf-8') : '',
   }
