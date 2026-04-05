@@ -71,7 +71,7 @@ function SortableTrackCard({
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-neutral-600 hover:text-neutral-400 flex-shrink-0"
+        className="cursor-grab active:cursor-grabbing text-neutral-600 hover:text-neutral-400 flex-shrink-0 touch-none"
       >
         <GripVertical size={16} />
       </div>
@@ -153,7 +153,7 @@ export const Playlist = memo(function Playlist({
   }
 
   return (
-    <div className="w-full overflow-y-auto flex-1">
+    <div className="w-full overflow-y-auto flex-1 select-none">
       <div className="flex items-center gap-2 mb-2 sm:mb-3 px-1 sm:px-2">
         <button
           onClick={onSelectAll}

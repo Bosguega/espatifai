@@ -62,7 +62,7 @@ export const Lyrics = memo(function Lyrics({ lyrics, translation, currentTime, f
   }
 
   return (
-    <div className="flex flex-col h-full bg-neutral-950">
+    <div className="flex flex-col h-full bg-neutral-950 select-text">
       {/* Tabs */}
       <div className="flex-none border-b border-neutral-800">
         <div className="flex">
