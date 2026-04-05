@@ -108,7 +108,7 @@ export function useAudioPlayer({ tracks, activeIds, trackOrder }: UseAudioPlayer
 
   useEffect(() => {
     if (shuffle) buildShuffledOrder()
-  }, [shuffle, buildShuffledOrder])
+  }, [shuffle, buildShuffledOrder, trackOrder, activeIds])
 
   // Find next track ID in sequence (skipping unselected)
   const findNextId = useCallback((currentId: number): number | null => {
@@ -139,14 +139,13 @@ export function useAudioPlayer({ tracks, activeIds, trackOrder }: UseAudioPlayer
       return shufOrder[nextPos]
     }
 
-    // Normal sequential via trackOrder
+    // Normal sequential — find next ACTIVE track
     const idx = order.indexOf(currentId)
-    const next = idx + 1
-    if (next >= order.length) {
-      // End of playlist — loop to first active
-      return rep === 'all' ? order.find(id => active.has(id)) ?? null : order.find(id => active.has(id)) ?? null
+    for (let i = idx + 1; i < order.length; i++) {
+      if (active.has(order[i])) return order[i]
     }
-    return order[next]
+    // End of playlist — loop to first active
+    return order.find(id => active.has(id)) ?? null
   }, [])
 
   // Convert track ID to original array index
@@ -315,20 +314,33 @@ export function useAudioPlayer({ tracks, activeIds, trackOrder }: UseAudioPlayer
       const idx = order.indexOf(currentId)
       if (shuffleRef.current) {
         const shufOrder = shuffledOrderRef.current
+        const active = activeIdsRef.current
         const pos = positionInOrderRef.current
         if (pos > 0) {
           positionInOrderRef.current = pos - 1
           const prevId = shufOrder[pos - 1]
-          playTrack(idToIndex(prevId))
+          if (active.has(prevId)) playTrack(idToIndex(prevId))
         } else if (shufOrder.length > 0) {
           positionInOrderRef.current = shufOrder.length - 1
-          playTrack(idToIndex(shufOrder[shufOrder.length - 1]))
+          const lastId = shufOrder[shufOrder.length - 1]
+          if (active.has(lastId)) playTrack(idToIndex(lastId))
         }
       } else {
-        // Find previous active track in order
-        const prevIdx = idx > 0 ? idx - 1 : order.length - 1
-        const prevId = order[prevIdx]
-        playTrack(idToIndex(prevId))
+        // Find previous ACTIVE track in order
+        const active = activeIdsRef.current
+        for (let i = idx - 1; i >= 0; i--) {
+          if (active.has(order[i])) {
+            playTrack(idToIndex(order[i]))
+            return
+          }
+        }
+        // Wrap to last active
+        for (let i = order.length - 1; i >= 0; i--) {
+          if (active.has(order[i])) {
+            playTrack(idToIndex(order[i]))
+            return
+          }
+        }
       }
     }
   }, [playTrack, idToIndex])
